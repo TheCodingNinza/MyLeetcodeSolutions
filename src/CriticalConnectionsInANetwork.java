@@ -1,25 +1,15 @@
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Stack;
-import java.util.stream.Stream;
 
 public class CriticalConnectionsInANetwork {
+    static int[] parent;
+    static int[] disc;
+    static int[] low;
+    static boolean[] visited;
+    static int time;
+    static List<List<Integer>> ans;
 
-    public class Node{
-        int val;
-        int parent;
-        int rank;
-
-        boolean visited;
-
-        public Node(int val, int parent, int rank, boolean visited) {
-            this.val = val;
-            this.parent = parent;
-            this.rank = rank;
-            this.visited = visited;
-        }
-    }
     public class DSU{
         int[] arr;
 
@@ -43,60 +33,68 @@ public class CriticalConnectionsInANetwork {
                 this.arr[parentB] = parentA;
             }
         }
-        public List<Integer> findAllParents(){
-            List<Integer> parents = new ArrayList<>();
+
+        public int findGroupCount(){
             int count = 0;
             for (int i = 0; i < this.arr.length; i++) {
                 if(this.arr[i] == -1){
-                    parents.add(i);
+                    count++;
                 }
             }
-            return parents;
+            return count;
         }
-
-
     }
+
     public List<List<Integer>> criticalConnections(int n, List<List<Integer>> connections) {
-        List<List<Integer>> ans = new ArrayList<>();
-        DSU originalNetwork = new DSU(n);
+        DSU network = new DSU(n);
+        parent = new int[n];
+        disc = new int[n];
+        low = new int[n];
+        visited = new boolean[n];
+        time = 0;
+        ans = new ArrayList<>();
+        parent[0] = -1;
+        List<List<Integer>> adjList = new ArrayList<>();
+        for (int i = 0; i < connections.size(); i++) {
+            adjList.add(new ArrayList<>());
+        }
         for(List<Integer> connection: connections){
-            originalNetwork.union(connection.get(0),connection.get(1));
+            adjList.get(connection.get(0)).add(connection.get(1));
+            adjList.get(connection.get(1)).add(connection.get(0));
+            network.union(connection.get(0),connection.get(1));
         }
-        List<Integer> parents = originalNetwork.findAllParents();
-
-        for (int i = 0; i < parents.size(); i++) {
-            List<List<Integer>> tmp  = discardEdgesFormingCycle(parents.get(i),connections,n);
-            List<List<Integer>> newList = new ArrayList<>();
-            Stream.of(ans, tmp).forEach(newList::addAll);
-            ans = newList;
-        }
-
+        System.out.println(network.findGroupCount());
+        dfs(0,adjList);
+        
         return ans;
     }
 
-    private List<List<Integer>> discardEdgesFormingCycle(int root, List<List<Integer>> connections,int n) {
-        List<List<Integer>> adjList = new ArrayList<>();
-        Node[] metaData = new Node[n];
-        for (int i = 0; i < n; i++) {
-            adjList = new ArrayList<>();
-        }
-        for (int i = 0; i < connections.size(); i++) {
-            adjList.get(connections.get(i).get(0)).add(connections.get(i).get(1));
-            adjList.get(connections.get(i).get(1)).add(connections.get(i).get(0));
-        }
-        Stack<Integer> stk = new Stack<>();
-        metaData[root] = new Node(root,-1,0,true);
-        stk.push(root);
-        while (!stk.empty()){
-            int itr = stk.pop();
-            List<Integer> adjNodes = adjList.get(itr);
-            for (int i = 0; i < adjNodes.size(); i++) {
+    public static void dfs(int src, List<List<Integer>> adjList){
+        visited[src] = true;
+        disc[src] = time;
+        time++;
+        low[src] = src;
+        List<Integer> neighbours = adjList.get(src);
+        for (int i = 0; i < neighbours.size(); i++) {
+            int neighbour = neighbours.get(i);
+            if(neighbour == parent[src]){
+                continue;
+            }else{
+                if(visited[neighbour]){
+                    low[src] = Math.min(low[src],disc[neighbour]);
+                }else{
+                    parent[neighbour] = src;
+                    dfs(neighbour, adjList);
+                    low[src] = Math.min(low[src],low[neighbour]);
+                    if(low[neighbour] > disc[src]){
+                        List<Integer> tmp = new ArrayList<>();
+                        tmp.add(neighbour);
+                        tmp.add(src);
+                        ans.add(tmp);
+                    }
 
+                }
             }
-
         }
-        return adjList;
     }
-
-
 }
